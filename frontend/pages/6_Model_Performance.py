@@ -1,11 +1,11 @@
 """
 Cynbit AI - ML Model Performance & Evaluation Page
-Visualizes genuine test-set metrics, confusion matrix, top features, and retraining controls.
+Visualizes genuine test-set metrics, confusion matrix, top features, and retraining controls via REST API.
 """
 
 import streamlit as st
 import pandas as pd
-from app.routes.ml import get_metrics, retrain_model
+from frontend.utils.api_client import api_client, APIClientError
 from frontend.components.styles import apply_cynbit_theme
 from frontend.components.sidebar import render_sidebar
 from frontend.components.cards import render_kpi_card
@@ -19,11 +19,14 @@ render_sidebar()
 st.title("🤖 ML Model Evaluation & Transparency")
 st.markdown("Detailed breakdown of Scikit-Learn TF-IDF + Logistic Regression classification performance on held-out test data.")
 
-# Fetch real saved metrics
+# Fetch real saved metrics from backend API
 try:
-    metrics = get_metrics()
-except Exception as e:
-    st.error(f"Error loading model metrics: {e}")
+    metrics = api_client.get_metrics()
+except APIClientError as e:
+    st.error(f"⚠️ Error loading model metrics from backend: {e}")
+    st.info("💡 If the backend is spinning up on Render, please wait a moment and retry.")
+    if st.button("🔄 Retry Connection"):
+        st.rerun()
     st.stop()
 
 # 1. Top Metrics KPI Row
@@ -58,6 +61,8 @@ with col_cm:
     if matrix:
         fig_cm = create_confusion_matrix_heatmap(labels, matrix)
         st.plotly_chart(fig_cm, use_container_width=True)
+    else:
+        st.info("Confusion matrix data not available.")
 
 with col_report:
     st.subheader("Per-Class Classification Report")
@@ -67,10 +72,10 @@ with col_report:
         for label, scores in per_class.items():
             report_rows.append({
                 "Service Category": label,
-                "Precision": f"{scores['precision']:.3f}",
-                "Recall": f"{scores['recall']:.3f}",
-                "F1-Score": f"{scores['f1_score']:.3f}",
-                "Support (N)": scores["support"]
+                "Precision": f"{scores.get('precision', 0.0):.3f}",
+                "Recall": f"{scores.get('recall', 0.0):.3f}",
+                "F1-Score": f"{scores.get('f1_score', 0.0):.3f}",
+                "Support (N)": scores.get("support", 0)
             })
         df_report = pd.DataFrame(report_rows)
         st.dataframe(df_report, use_container_width=True, hide_index=True)
@@ -96,37 +101,43 @@ if top_features:
     categories = list(top_features.keys())
     selected_class = st.selectbox("Select Service Category to Inspect Features:", categories)
     
-    feats = top_features[selected_class]
-    df_feat = pd.DataFrame(feats)
-    df_feat = df_feat.sort_values(by="weight", ascending=True)
-    
-    fig_feat = go.Figure(go.Bar(
-        x=df_feat["weight"],
-        y=df_feat["feature"],
-        orientation="h",
-        marker_color="#48CAE4",
-        text=[f"+{w:.3f}" for w in df_feat["weight"]],
-        textposition="outside",
-        textfont=dict(color="#FFFFFF")
-    ))
-    fig_feat.update_layout(
-        **LAYOUT_DEFAULTS,
-        xaxis_title="Logistic Regression Weight (Log-Odds Impact)",
-        yaxis_title="TF-IDF N-Gram Feature",
-        xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)")
-    )
-    st.plotly_chart(fig_feat, use_container_width=True)
+    feats = top_features.get(selected_class, [])
+    if feats:
+        df_feat = pd.DataFrame(feats)
+        df_feat = df_feat.sort_values(by="weight", ascending=True)
+        
+        fig_feat = go.Figure(go.Bar(
+            x=df_feat["weight"],
+            y=df_feat["feature"],
+            orientation="h",
+            marker_color="#48CAE4",
+            text=[f"+{w:.3f}" for w in df_feat["weight"]],
+            textposition="outside",
+            textfont=dict(color="#FFFFFF")
+        ))
+        fig_feat.update_layout(
+            **LAYOUT_DEFAULTS,
+            xaxis_title="Logistic Regression Weight (Log-Odds Impact)",
+            yaxis_title="TF-IDF N-Gram Feature",
+            xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)")
+        )
+        st.plotly_chart(fig_feat, use_container_width=True)
+    else:
+        st.info("No feature weights recorded for this class.")
 
 st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
 
-# 4. Retrain Model Action
+# 4. Retrain Model Action via API
 st.subheader("🔄 Retrain Classification Model")
-st.markdown("Trigger an end-to-end retraining run on the dataset to update pipeline weights and persist new artifacts.")
+st.markdown("Trigger an end-to-end retraining run on the dataset via backend API to update pipeline weights and persist new artifacts.")
 
 col_r1, col_r2 = st.columns([1, 3])
 with col_r1:
     if st.button("🚀 Retrain Model Now", use_container_width=True):
-        with st.spinner("Retraining model on training dataset..."):
-            retrain_res = retrain_model()
-            st.success(retrain_res["message"])
-            st.rerun()
+        try:
+            with st.spinner("Retraining model on backend via API (up to 30s)..."):
+                retrain_res = api_client.retrain_model()
+                st.success(retrain_res.get("message", "Model successfully retrained!"))
+                st.rerun()
+        except APIClientError as e:
+            st.error(f"Retraining failed: {e}")

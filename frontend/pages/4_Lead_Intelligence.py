@@ -1,13 +1,12 @@
 """
 Cynbit AI - Lead Intelligence Deep Dive Page
-Provides granular 360-degree inspection for any individual qualified lead.
+Provides granular 360-degree inspection for any individual qualified lead via REST API.
 """
 
 import streamlit as st
 import json
-from app.database import SessionLocal
-from app.routes.leads import list_leads, get_lead, update_lead
-from app.schemas.lead import LeadUpdateRequest
+from datetime import datetime
+from frontend.utils.api_client import api_client, APIClientError
 from frontend.components.styles import apply_cynbit_theme
 from frontend.components.sidebar import render_sidebar
 from frontend.components.cards import render_priority_badge, render_score_badge
@@ -20,27 +19,52 @@ render_sidebar()
 st.title("🔍 Lead Intelligence & Scoring Deep-Dive")
 st.markdown("Inspect granular entity extractions, mathematical score weights, and tailored proposal drafts.")
 
-db = SessionLocal()
+def format_date_str(val, fmt="%Y-%m-%d %H:%M"):
+    """Safely formats ISO string or datetime object."""
+    if not val:
+        return ""
+    if isinstance(val, str):
+        try:
+            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            return dt.strftime(fmt)
+        except Exception:
+            return val[:16]
+    if hasattr(val, "strftime"):
+        return val.strftime(fmt)
+    return str(val)
+
+# Fetch leads via API
 try:
-    all_leads = list_leads(limit=100, sort_by="score", order="desc", db=db)
-finally:
-    db.close()
+    all_leads = api_client.list_leads(limit=100, sort_by="score", order="desc")
+except APIClientError as e:
+    st.error(f"⚠️ Could not load leads from backend: {e}")
+    all_leads = []
 
 if not all_leads:
     st.warning("No leads found in database. Please add or seed leads first.")
+    if st.button("🌱 Seed Sample Leads Now"):
+        try:
+            api_client.seed_leads(force=True)
+            st.success("Sample leads seeded successfully! Refreshing...")
+            st.rerun()
+        except APIClientError as e:
+            st.error(f"Failed to seed leads: {e}")
     st.stop()
 
 # Selector for lead
-lead_options = {f"{l['lead_id']} | {l['client_name']} ({l['client_company']}) - {l['service_category']} [Score: {l['score']}]": l["lead_id"] for l in all_leads}
+lead_options = {
+    f"{l['lead_id']} | {l.get('client_name', 'Lead')} ({l.get('client_company', 'N/A')}) - {l.get('service_category', 'Other')} [Score: {l.get('score', 0)}]": l["lead_id"]
+    for l in all_leads
+}
 selected_label = st.selectbox("Select a Lead to Inspect:", list(lead_options.keys()))
 lead_id = lead_options[selected_label]
 
-# Fetch full details
-db = SessionLocal()
+# Fetch full details via API
 try:
-    lead = get_lead(lead_id, db=db)
-finally:
-    db.close()
+    lead = api_client.get_lead(lead_id)
+except APIClientError as e:
+    st.error(f"Could not load details for lead {lead_id}: {e}")
+    st.stop()
 
 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
@@ -48,25 +72,25 @@ st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 col_h1, col_h2, col_h3, col_h4 = st.columns([1.5, 1, 1, 1])
 
 with col_h1:
-    st.markdown(f"### {lead['client_name']}")
-    st.markdown(f"**Company:** {lead['client_company'] or 'N/A'} | **Email:** `{lead['client_email'] or 'N/A'}`")
-    st.caption(f"Lead ID: `{lead['lead_id']}` | Created: {lead['created_at'].strftime('%Y-%m-%d %H:%M')}")
+    st.markdown(f"### {lead.get('client_name', 'Lead')}")
+    st.markdown(f"**Company:** {lead.get('client_company') or 'N/A'} | **Email:** `{lead.get('client_email') or 'N/A'}`")
+    st.caption(f"Lead ID: `{lead.get('lead_id')}` | Created: {format_date_str(lead.get('created_at'))}")
 
 with col_h2:
     st.markdown("**Priority & Score**")
-    st.markdown(render_priority_badge(lead["priority"]), unsafe_allow_html=True)
-    st.markdown(render_score_badge(lead["score"]), unsafe_allow_html=True)
+    st.markdown(render_priority_badge(lead.get("priority", "Warm")), unsafe_allow_html=True)
+    st.markdown(render_score_badge(lead.get("score", 0)), unsafe_allow_html=True)
 
 with col_h3:
     st.markdown("**Service Category**")
-    st.markdown(f"#### {lead['service_category']}")
-    st.caption(f"ML Confidence: {lead['category_confidence']*100:.1f}%")
+    st.markdown(f"#### {lead.get('service_category', 'Other')}")
+    st.caption(f"ML Confidence: {lead.get('category_confidence', 0.0)*100:.1f}%")
 
 with col_h4:
     st.markdown("**Commercial Parameters**")
-    st.markdown(f"**Budget:** `{lead['budget_raw']}`")
-    st.markdown(f"**Timeline:** `{lead['timeline_raw']}`")
-    st.markdown(f"**Urgency:** `{lead['urgency_level']}`")
+    st.markdown(f"**Budget:** `{lead.get('budget_raw', 'Unspecified')}`")
+    st.markdown(f"**Timeline:** `{lead.get('timeline_raw', 'Flexible')}`")
+    st.markdown(f"**Urgency:** `{lead.get('urgency_level', 'Medium')}`")
 
 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
@@ -77,14 +101,14 @@ with col_left:
     st.subheader("📝 Original Client Inquiry")
     st.markdown(f"""
     <div style="background-color: #141C36; border-left: 3px solid #48CAE4; border-radius: 6px; padding: 16px 20px; font-size: 0.95rem; line-height: 1.6; color: #E0E1DD;">
-        "{lead['inquiry_text']}"
+        "{lead.get('inquiry_text', '')}"
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
     st.subheader("🧩 Extracted Business Entities")
     
-    st.markdown(f"**Customer Intent:** `{lead['customer_intent']}`")
+    st.markdown(f"**Customer Intent:** `{lead.get('customer_intent', 'N/A')}`")
     
     techs = lead.get("detected_technologies", [])
     if techs:
@@ -116,27 +140,25 @@ st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 st.subheader("✉️ Tailored AI Business Response")
 st.caption(f"Engine: {lead.get('response_engine', 'Cynbit Rule Engine')}")
 
-edited_response = st.text_area("Client Proposal / Reply Draft", value=lead["suggested_response"], height=240)
+edited_response = st.text_area("Client Proposal / Reply Draft", value=lead.get("suggested_response", ""), height=240)
 
 col_act1, col_act2, col_act3 = st.columns([1, 1, 2])
 with col_act1:
     if st.button("💾 Save Response Draft", use_container_width=True):
-        db = SessionLocal()
         try:
-            req = LeadUpdateRequest(notes=f"Draft response updated at {st.session_state.get('time', 'recent')}")
-            # Update response directly in model
-            from app.models.lead import LeadModel
-            lead_db = db.query(LeadModel).filter(LeadModel.lead_id == lead["lead_id"]).first()
-            if lead_db:
-                lead_db.suggested_response = edited_response
-                db.commit()
-                st.success("Draft response saved!")
-        except Exception as e:
+            with st.spinner("Saving response draft via API..."):
+                existing_notes = lead.get("notes", "")
+                timestamp_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+                note_update = f"{existing_notes} | Draft updated at {timestamp_str}".strip(" |")
+                api_client.update_lead(
+                    lead_identifier=lead["lead_id"],
+                    notes=note_update
+                )
+                st.success("Draft response saved to CRM record!")
+        except APIClientError as e:
             st.error(f"Save failed: {e}")
-        finally:
-            db.close()
 
 with col_act2:
     if st.button("🚀 Simulate Send to Client", use_container_width=True):
-        st.toast(f"Proposal sent to {lead['client_email'] or lead['client_name']}!", icon="✅")
-        st.success(f"Response successfully dispatched to {lead['client_name']}.")
+        st.toast(f"Proposal sent to {lead.get('client_email') or lead.get('client_name')}!", icon="✅")
+        st.success(f"Response successfully dispatched to {lead.get('client_name')}.")

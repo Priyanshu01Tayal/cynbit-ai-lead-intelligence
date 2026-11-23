@@ -1,15 +1,13 @@
 """
 Cynbit AI - Streamlit Sidebar Component
-Renders the brand sidebar with navigation assistance and live system diagnostics.
+Renders the brand sidebar with navigation assistance and live system diagnostics via REST API.
 """
 
 import streamlit as st
-from app.database import SessionLocal
-from app.models.lead import LeadModel
-from app.ml.evaluate import is_model_trained
+from frontend.utils.api_client import api_client, APIClientError
 
 def render_sidebar():
-    """Renders persistent Cynbit branded sidebar."""
+    """Renders persistent Cynbit branded sidebar connected to FastAPI backend."""
     with st.sidebar:
         # Brand Header
         st.markdown("""
@@ -25,17 +23,33 @@ def render_sidebar():
         
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
         
-        # System Health & Telemetry
-        model_ready = is_model_trained()
-        db = SessionLocal()
+        # System Health & Telemetry via API
+        backend_connected = False
+        model_ready = False
+        total_leads = 0
+        hot_count = 0
+        
         try:
-            total_leads = db.query(LeadModel).count()
-            hot_count = db.query(LeadModel).filter(LeadModel.priority == "Hot").count()
+            health = api_client.get_health()
+            backend_connected = (health.get("status") == "healthy")
+            model_ready = health.get("model_loaded", False)
+            total_leads = health.get("lead_count", 0)
+            
+            # Fetch hot count from analytics summary
+            summary = api_client.get_analytics_summary()
+            hot_count = summary.get("hot_leads", 0)
+            total_leads = summary.get("total_leads", total_leads)
         except Exception:
+            # Backend may be starting or offline
+            backend_connected = False
+            model_ready = False
             total_leads = 0
             hot_count = 0
-        finally:
-            db.close()
+
+        # Display host indicator
+        host_display = api_client.base_url.replace("https://", "").replace("http://", "")
+        if len(host_display) > 28:
+            host_display = host_display[:25] + "..."
             
         st.markdown(f"""
         <div style="background-color: #141C36; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 14px; margin-bottom: 20px;">
@@ -45,12 +59,20 @@ def render_sidebar():
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                 <span style="font-size: 0.8rem; color: #E0E1DD;">ML Inference:</span>
                 <span style="font-size: 0.75rem; color: {'#06D6A0' if model_ready else '#EF476F'}; font-weight: 700;">
-                    {'● ACTIVE (TF-IDF)' if model_ready else '○ RETRAINING'}
+                    {'● ACTIVE (TF-IDF)' if model_ready else '○ OFFLINE'}
                 </span>
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-size: 0.8rem; color: #E0E1DD;">CRM Database:</span>
-                <span style="font-size: 0.75rem; color: #06D6A0; font-weight: 700;">● CONNECTED</span>
+                <span style="font-size: 0.8rem; color: #E0E1DD;">Backend API:</span>
+                <span style="font-size: 0.75rem; color: {'#06D6A0' if backend_connected else '#EF476F'}; font-weight: 700;">
+                    {'● CONNECTED' if backend_connected else '○ CONNECTING...'}
+                </span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.8rem; color: #E0E1DD;">Host:</span>
+                <span style="font-size: 0.72rem; color: #48CAE4; font-family: monospace; font-weight: 600;" title="{api_client.base_url}">
+                    {host_display}
+                </span>
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 0.8rem; color: #E0E1DD;">Total Records:</span>

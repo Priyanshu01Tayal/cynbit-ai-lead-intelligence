@@ -1,13 +1,13 @@
 """
 Cynbit AI - Advanced Analytics & Pipeline Insights Page
+Visualizes statistical distributions, deal sizes, velocity, and conversion drop-offs via REST API.
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from app.database import SessionLocal
-from app.routes.analytics import get_analytics_summary, get_conversion_funnel, get_distributions
+from frontend.utils.api_client import api_client, APIClientError
 from frontend.components.styles import apply_cynbit_theme
 from frontend.components.sidebar import render_sidebar
 from frontend.components.charts import create_conversion_funnel, create_priority_donut, LAYOUT_DEFAULTS
@@ -17,15 +17,19 @@ apply_cynbit_theme()
 render_sidebar()
 
 st.title("📈 Advanced Pipeline Analytics")
-st.markdown("In-depth statistical insights across lead scores, deal sizes, velocity, and conversion drop-offs.")
+st.markdown("In-depth statistical insights across lead scores, deal sizes, velocity, and conversion drop-offs via REST API.")
 
-db = SessionLocal()
+# Fetch analytics from backend API
 try:
-    summary = get_analytics_summary(db=db)
-    funnel = get_conversion_funnel(db=db)
-    distributions = get_distributions(db=db)
-finally:
-    db.close()
+    summary = api_client.get_analytics_summary()
+    funnel = api_client.get_conversion_funnel()
+    distributions = api_client.get_distributions()
+except APIClientError as e:
+    st.error(f"⚠️ Unable to load analytics from backend: {e}")
+    st.info("💡 If the backend is waking up from idle sleep on Render, please wait a moment and refresh.")
+    if st.button("🔄 Retry"):
+        st.rerun()
+    st.stop()
 
 # 1. Funnel & Score Distribution
 col1, col2 = st.columns([1.2, 1.1])
@@ -39,7 +43,7 @@ with col1:
 with col2:
     st.subheader("Lead Score Distribution")
     st.markdown("Density distribution of 0-100 composite scores across all leads.")
-    scores = distributions["score_distribution"]
+    scores = distributions.get("score_distribution", [])
     if scores:
         fig_hist = go.Figure(data=[go.Histogram(
             x=scores,
@@ -55,6 +59,8 @@ with col2:
             yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)")
         )
         st.plotly_chart(fig_hist, use_container_width=True)
+    else:
+        st.info("No score data available yet.")
 
 st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 
@@ -83,11 +89,13 @@ with col3:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("No category priority data available.")
 
 with col4:
     st.subheader("Budget Tiers")
     tiers = distributions.get("budget_tiers", {})
-    if tiers:
+    if tiers and any(v > 0 for v in tiers.values()):
         fig_pie = go.Figure(data=[go.Pie(
             labels=list(tiers.keys()),
             values=list(tiers.values()),
@@ -96,3 +104,5 @@ with col4:
         )])
         fig_pie.update_layout(**LAYOUT_DEFAULTS)
         st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.info("No budget tier distributions recorded.")

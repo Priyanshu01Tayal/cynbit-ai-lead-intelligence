@@ -5,7 +5,8 @@
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.9-F7931E?style=flat&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.67-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![Plotly](https://img.shields.io/badge/Plotly-7.1-3F4F75?style=flat&logo=plotly&logoColor=white)](https://plotly.com/)
-[![Tests Passing](https://img.shields.io/badge/Tests-14%2F14%20Passed-06D6A0?style=flat&logo=pytest&logoColor=white)](https://pytest.org/)
+[![Tests Passing](https://img.shields.io/badge/Tests-30%2F30%20Passed-06D6A0?style=flat&logo=pytest&logoColor=white)](https://pytest.org/)
+[![Backend Live](https://img.shields.io/badge/Backend-Render%20Live-48CAE4?style=flat&logo=render&logoColor=white)](https://cynbit-ai-lead-intelligence.onrender.com/docs)
 
 An enterprise-grade, full-stack AI/ML platform developed for **Cynbit Technologies** to automate the intake, categorization, multi-dimensional qualification, and executive response generation for inbound business inquiries.
 
@@ -13,6 +14,7 @@ An enterprise-grade, full-stack AI/ML platform developed for **Cynbit Technologi
 
 ## 📌 Table of Contents
 - [Executive Overview](#-executive-overview)
+- [Live Cloud Deployment](#-live-cloud-deployment)
 - [Business Problem](#-business-problem)
 - [Key Features](#-key-features)
 - [System Architecture](#-system-architecture)
@@ -20,10 +22,25 @@ An enterprise-grade, full-stack AI/ML platform developed for **Cynbit Technologi
 - [Technology Stack](#-technology-stack)
 - [Directory Structure](#-directory-structure)
 - [Installation & Quickstart](#-installation--quickstart)
+- [Streamlit Cloud Deployment Guide](#-streamlit-cloud-deployment-guide)
 - [REST API Documentation](#-rest-api-documentation)
 - [User Interface & Screenshots](#-user-interface--screenshots)
 - [Reports & Documentation](#-reports--documentation)
 - [Limitations & Future Scope](#-limitations--future-scope)
+
+---
+
+## 🌐 Live Cloud Deployment
+
+The backend application is deployed in production on Render:
+
+| Service | Live URL | Description |
+| :--- | :--- | :--- |
+| **Production REST API** | [`https://cynbit-ai-lead-intelligence.onrender.com`](https://cynbit-ai-lead-intelligence.onrender.com) | Live FastAPI application |
+| **Interactive API Docs (Swagger)** | [`https://cynbit-ai-lead-intelligence.onrender.com/docs`](https://cynbit-ai-lead-intelligence.onrender.com/docs) | Complete interactive API explorer |
+| **System Health & Telemetry** | [`https://cynbit-ai-lead-intelligence.onrender.com/api/health`](https://cynbit-ai-lead-intelligence.onrender.com/api/health) | Live JSON health monitor |
+
+> **Note on Free-Tier Instances:** If the Render instance has been inactive, it may spin down to save resources and take 30–50 seconds to boot on the first inbound request. The Streamlit frontend includes built-in loading notifications and auto-retry capabilities.
 
 ---
 
@@ -213,18 +230,20 @@ cynbit/
 ├── frontend/
 │   ├── streamlit_app.py           # Main Streamlit entrance & overview
 │   ├── components/
-│   │   ├── sidebar.py             # Persistent sidebar with system telemetry
+│   │   ├── sidebar.py             # Persistent sidebar with system telemetry & API status
 │   │   ├── cards.py               # KPI cards & priority badges
 │   │   ├── charts.py              # Plotly chart generators
 │   │   └── styles.py              # Custom Dark Navy & Cyan CSS theme
-│   └── pages/
-│       ├── 1_Dashboard.py         # Executive KPI dashboard
-│       ├── 2_Add_New_Lead.py      # AI Lead Intake form & preset templates
-│       ├── 3_Lead_Management.py   # Search, filter, status updater, CSV export
-│       ├── 4_Lead_Intelligence.py # Single lead deep dive & response editor
-│       ├── 5_Analytics.py         # Advanced distributions & funnel analysis
-│       ├── 6_Model_Performance.py # Live confusion matrix & retraining
-│       └── 7_About_Project.py     # Architecture overview & documentation
+│   ├── pages/
+│   │   ├── 1_Dashboard.py         # Executive KPI dashboard
+│   │   ├── 2_Add_New_Lead.py      # AI Lead Intake form & preset templates
+│   │   ├── 3_Lead_Management.py   # Search, filter, status updater, CSV export
+│   │   ├── 4_Lead_Intelligence.py # Single lead deep dive & response editor
+│   │   ├── 5_Analytics.py         # Advanced distributions & funnel analysis
+│   │   ├── 6_Model_Performance.py # Live confusion matrix & retraining
+│   │   └── 7_About_Project.py     # Architecture overview & documentation
+│   └── utils/
+│       └── api_client.py          # Centralized REST HTTP client (requests-based)
 ├── data/
 │   ├── training_leads.csv         # 240 labeled inquiries for model training
 │   ├── sample_leads.csv           # 48 historical leads for database seeding
@@ -238,14 +257,18 @@ cynbit/
 │   ├── model_training.ipynb       # Documented Jupyter training notebook
 │   └── generate_notebook.py       # Notebook generator
 ├── tests/
+│   ├── test_api_client.py         # Frontend REST API client unit tests
+│   ├── test_frontend_pages.py     # Streamlit page execution integration tests
 │   ├── test_ml_pipeline.py        # NLP & classification tests
 │   ├── test_extractor.py          # Entity parsing tests
 │   ├── test_scoring.py            # Lead scoring & priority tests
 │   └── test_api.py                # FastAPI endpoint integration tests
 ├── reports/
 │   ├── AI_Opportunity_Report.md   # 10-section strategic business analysis
-│   └── Technical_Approach_Report.md # 15-section technical architecture
+│   ├── Technical_Approach_Report.md # 15-section technical architecture
+│   └── FINAL_AUDIT_REPORT.md      # Comprehensive QA and verification audit
 ├── requirements.txt               # Locked project dependencies
+├── render.yaml                    # Render cloud deployment blueprint
 ├── .env.example                   # Environment variable template
 ├── .gitignore                     # Git ignore rules
 └── README.md                      # Complete project documentation
@@ -276,28 +299,59 @@ Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
-*(Optional)* Add `GEMINI_API_KEY` or `OPENAI_API_KEY` to enable live LLM response generation. If left blank, the platform automatically utilizes its built-in rule and template proposal engine.
+By default, `API_BASE_URL` is set to connect directly to the live deployed backend on Render:
+```env
+API_BASE_URL="https://cynbit-ai-lead-intelligence.onrender.com"
+```
+If you wish to run both backend and frontend locally, simply update:
+```env
+API_BASE_URL="http://127.0.0.1:8000"
+```
 
 ### 3. Run the Automated Test Suite
-Verify that all 14 tests pass:
+Verify that all 30 unit and integration tests pass:
 ```bash
 pytest -v
 ```
 
-### 4. Launch the Applications
+### 4. Launch the Frontend
+Because the backend is already live on Render, you can launch the Streamlit interface immediately:
+```bash
+streamlit run frontend/streamlit_app.py --server.port 8501
+```
+- Open in your browser: `http://localhost:8501`
 
-#### Start the FastAPI Backend:
+*(Optional)* If running backend locally:
 ```bash
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 - Interactive Swagger API Docs: `http://127.0.0.1:8000/docs`
 - ReDoc API Docs: `http://127.0.0.1:8000/redoc`
 
-#### Start the Streamlit Frontend:
-```bash
-streamlit run frontend/streamlit_app.py --server.port 8501
-```
-- Open in your browser: `http://localhost:8501`
+---
+
+## ☁️ Streamlit Cloud Deployment Guide
+
+To deploy the Streamlit frontend to Streamlit Community Cloud:
+
+1. **Push repository to GitHub**:
+   Ensure all files including `frontend/` and `requirements.txt` are committed to your GitHub repository.
+
+2. **Connect to Streamlit Cloud**:
+   - Navigate to [share.streamlit.io](https://share.streamlit.io/) and click **New App**.
+   - Select your repository, branch (`main`), and set **Main file path** to:
+     ```
+     frontend/streamlit_app.py
+     ```
+
+3. **Configure App Secrets & Environment**:
+   Under **Advanced Settings > Secrets**, configure the backend URL:
+   ```toml
+   API_BASE_URL = "https://cynbit-ai-lead-intelligence.onrender.com"
+   ```
+
+4. **Deploy**:
+   Click **Deploy!** The frontend will immediately connect to your live Render backend, streaming real-time lead telemetry, ML metrics, and CRM records.
 
 ---
 

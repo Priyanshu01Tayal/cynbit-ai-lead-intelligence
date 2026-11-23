@@ -1,13 +1,11 @@
 """
 Cynbit AI - Add New Lead & Live AI Intelligence Form
+Submits customer inquiries to the backend API for real-time ML analysis and CRM persistence.
 """
 
 import streamlit as st
 import json
-from app.database import SessionLocal
-from app.routes.leads import create_lead
-from app.schemas.lead import LeadCreateRequest
-from app.services.lead_service import lead_service
+from frontend.utils.api_client import api_client, APIClientError
 from frontend.components.styles import apply_cynbit_theme
 from frontend.components.sidebar import render_sidebar
 from frontend.components.cards import render_priority_badge, render_score_badge
@@ -70,16 +68,19 @@ if submitted or (inquiry_text and default_inquiry and "last_analyzed" not in st.
         st.error("Please enter inquiry text to analyze.")
     else:
         chosen_cat = None if manual_cat == "Auto-Detect with AI" else manual_cat
-        with st.spinner("Analyzing inquiry with Cynbit ML Engine..."):
-            result = lead_service.analyze_lead_inquiry(
-                inquiry_text=inquiry_text,
-                client_name=client_name,
-                client_email=client_email,
-                client_company=client_company,
-                manual_category=chosen_cat
-            )
-            st.session_state["current_analysis"] = result
-            st.session_state["last_analyzed"] = True
+        try:
+            with st.spinner("Analyzing inquiry with Cynbit ML Engine..."):
+                result = api_client.analyze_inquiry(
+                    inquiry_text=inquiry_text,
+                    client_name=client_name,
+                    client_email=client_email,
+                    client_company=client_company,
+                    manual_category=chosen_cat
+                )
+                st.session_state["current_analysis"] = result
+                st.session_state["last_analyzed"] = True
+        except APIClientError as e:
+            st.error(f"Analysis failed: {e}")
 
 if "current_analysis" in st.session_state:
     res = st.session_state["current_analysis"]
@@ -96,21 +97,21 @@ if "current_analysis" in st.session_state:
                     LEAD QUALIFICATION SCORE
                 </div>
                 <div style="font-size: 2.8rem; font-weight: 800; color: #FFFFFF; font-family: 'JetBrains Mono', monospace;">
-                    {res['score']} <span style="font-size: 1.2rem; color: #8D99AE;">/ 100</span>
+                    {res.get('score', 0)} <span style="font-size: 1.2rem; color: #8D99AE;">/ 100</span>
                 </div>
             </div>
             <div>
                 <div style="font-size: 0.85rem; color: #8D99AE; text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">
                     PRIORITY TIER
                 </div>
-                <div>{render_priority_badge(res['priority'])}</div>
+                <div>{render_priority_badge(res.get('priority', 'Warm'))}</div>
             </div>
             <div>
                 <div style="font-size: 0.85rem; color: #8D99AE; text-transform: uppercase; font-weight: 700;">
                     SERVICE CLASSIFICATION
                 </div>
                 <div style="font-size: 1.25rem; font-weight: 700; color: #48CAE4;">
-                    {res['service_category']} <span style="font-size: 0.85rem; color: #06D6A0;">({res['category_confidence']*100:.1f}% confidence)</span>
+                    {res.get('service_category', 'Other')} <span style="font-size: 0.85rem; color: #06D6A0;">({res.get('category_confidence', 0.0)*100:.1f}% confidence)</span>
                 </div>
             </div>
             <div>
@@ -118,12 +119,12 @@ if "current_analysis" in st.session_state:
                     ESTIMATED BUDGET
                 </div>
                 <div style="font-size: 1.25rem; font-weight: 700; color: #FFFFFF; font-family: monospace;">
-                    {res['budget_raw']}
+                    {res.get('budget_raw', 'Unspecified')}
                 </div>
             </div>
         </div>
         <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem; color: #CCD6F6;">
-            <strong>Action Recommendation:</strong> {res['action_recommendation']}
+            <strong>Action Recommendation:</strong> {res.get('action_recommendation', 'Follow up promptly.')}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -133,9 +134,9 @@ if "current_analysis" in st.session_state:
     
     with col_d1:
         st.subheader("Extracted Entity Breakdown")
-        st.markdown(f"**Customer Intent:** `{res['customer_intent']}`")
-        st.markdown(f"**Target Timeline:** `{res['timeline_raw']}`")
-        st.markdown(f"**Urgency Level:** `{res['urgency_level']}`")
+        st.markdown(f"**Customer Intent:** `{res.get('customer_intent', 'Commercial Project')}`")
+        st.markdown(f"**Target Timeline:** `{res.get('timeline_raw', 'Flexible')}`")
+        st.markdown(f"**Urgency Level:** `{res.get('urgency_level', 'Medium')}`")
         
         techs = res.get("detected_technologies", [])
         if techs:
@@ -153,31 +154,30 @@ if "current_analysis" in st.session_state:
             
     with col_d2:
         st.subheader("Score Factor Contributions")
-        fig_score = create_score_breakdown_bar(res["score_breakdown"])
-        st.plotly_chart(fig_score, use_container_width=True)
+        breakdown = res.get("score_breakdown", {})
+        if breakdown:
+            fig_score = create_score_breakdown_bar(breakdown)
+            st.plotly_chart(fig_score, use_container_width=True)
         
     # Suggested Response Preview & Save to DB
     st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
     st.subheader("✉️ AI-Generated Proposal / Response")
-    st.caption(f"Generated via: {res['response_engine']}")
+    st.caption(f"Generated via: {res.get('response_engine', 'Cynbit Engine')}")
     
-    resp_text = st.text_area("Client Response Preview (Editable)", value=res["suggested_response"], height=220)
+    resp_text = st.text_area("Client Response Preview (Editable)", value=res.get("suggested_response", ""), height=220)
     
-    # Save to CRM Database Button
+    # Save to CRM Database Button via API
     if st.button("💾 Save Lead to CRM Database", use_container_width=True):
-        db = SessionLocal()
         try:
-            req_create = LeadCreateRequest(
-                inquiry_text=res["inquiry_text"],
-                client_name=res["client_name"] or "Inbound Lead",
-                client_email=res["client_email"],
-                client_company=res["client_company"],
-                manual_category=res["service_category"],
-                notes=notes
-            )
-            saved = create_lead(req_create, db=db)
-            st.success(f"✅ Lead successfully saved! Assigned ID: **{saved['lead_id']}**")
-        except Exception as e:
+            with st.spinner("Saving lead to backend CRM..."):
+                saved = api_client.create_lead(
+                    inquiry_text=res.get("inquiry_text", inquiry_text),
+                    client_name=res.get("client_name") or "Inbound Lead",
+                    client_email=res.get("client_email", ""),
+                    client_company=res.get("client_company", ""),
+                    manual_category=res.get("service_category"),
+                    notes=notes
+                )
+                st.success(f"✅ Lead successfully saved! Assigned ID: **{saved.get('lead_id')}**")
+        except APIClientError as e:
             st.error(f"Failed to save lead: {e}")
-        finally:
-            db.close()

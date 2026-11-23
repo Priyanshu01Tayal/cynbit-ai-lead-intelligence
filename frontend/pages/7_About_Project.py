@@ -31,22 +31,23 @@ st.subheader("🏗️ System Architecture & Workflow")
 st.markdown("""
 ```mermaid
 flowchart LR
-    A[Inbound Customer Inquiry] --> B[FastAPI / Streamlit Interface]
-    B --> C[NLP Preprocessor]
-    C --> D[TF-IDF Vectorizer]
-    D --> E[Logistic Regression Classifier]
-    E --> F[Service Category & Confidence]
+    A[Inbound Customer Inquiry] --> B[Streamlit Multi-Page UI]
+    B -->|HTTP REST API / JSON| C[FastAPI Production Backend]
+    C --> D[NLP Preprocessor & Tokenizer]
+    D --> E[TF-IDF N-Gram Vectorizer]
+    E --> F[Logistic Regression Classifier]
+    F --> G[Service Category & Confidence]
     
-    C --> G[Regex & Semantic Entity Extractor]
-    G --> H[Budget, Timeline, Urgency & Tech Stack]
+    D --> H[Heuristic & Regex Entity Extractor]
+    H --> I[Budget, Timeline, Urgency & Tech Stack]
     
-    F --> I[Multidimensional Scoring Engine]
-    H --> I
-    I --> J[Score 0-100 & Priority: Hot / Warm / Cold]
+    G --> J[Multidimensional Scoring Engine]
+    I --> J
+    J --> K[Score 0-100 & Priority: Hot / Warm / Cold]
     
-    J --> K[Personalized Response Generator]
-    K --> L[Persistent SQLite Database]
-    L --> M[Executive Analytics Dashboard]
+    K --> L[Personalized Proposal Generator]
+    L --> M[Persistent Database Storage]
+    M --> N[Real-Time Analytics Dashboard]
 ```
 """)
 
@@ -59,9 +60,10 @@ with col1:
         <ul style="color: #CCD6F6; font-size: 0.9rem; line-height: 1.7;">
             <li><strong>Python 3.11:</strong> High-performance core runtime</li>
             <li><strong>FastAPI & Uvicorn:</strong> Production asynchronous REST API with Pydantic v2 schemas</li>
-            <li><strong>Scikit-Learn:</strong> TF-IDF N-gram feature extraction & multi-class Logistic Regression</li>
-            <li><strong>SQLAlchemy 2.0 & SQLite:</strong> Transactional persistence and filtering</li>
-            <li><strong>Pytest:</strong> Comprehensive test suite with 100% passing test coverage</li>
+            <li><strong>Render Cloud:</strong> Live deployed backend at <code>cynbit-ai-lead-intelligence.onrender.com</code></li>
+            <li><strong>Scikit-Learn:</strong> TF-IDF N-gram feature extraction & multi-class Logistic Regression (85.42% accuracy)</li>
+            <li><strong>SQLAlchemy 2.0 & SQLite:</strong> Transactional persistence, multi-field filtering, and CSV streaming</li>
+            <li><strong>Pytest:</strong> Comprehensive test suite covering ML, extraction, scoring, and endpoints</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -72,8 +74,9 @@ with col2:
         <h4 style="color: #48CAE4; margin-top: 0;">🎨 Frontend & Visualization Stack</h4>
         <ul style="color: #CCD6F6; font-size: 0.9rem; line-height: 1.7;">
             <li><strong>Streamlit:</strong> Multi-page reactive web application</li>
+            <li><strong>Decoupled HTTP Architecture:</strong> Centralized API client reading <code>API_BASE_URL</code></li>
             <li><strong>Plotly:</strong> Interactive GPU-accelerated business and ML charts</li>
-            <li><strong>Custom Dark Theme:</strong> Modern enterprise SaaS palette with responsive typography</li>
+            <li><strong>Custom Dark Theme:</strong> Modern enterprise SaaS palette (#0B132B / #48CAE4)</li>
             <li><strong>Transparent Metrics:</strong> Live confusion matrix, per-class F1, and top TF-IDF n-grams</li>
         </ul>
     </div>
@@ -89,6 +92,7 @@ st.markdown("""
 - [x] **Multidimensional Lead Scoring:** 0-100 composite scoring across 5 weighted dimensions with explainable reasons.
 - [x] **AI Response Generator:** Context-aware proposal emails tailored by service, priority, and timeline (with LLM support).
 - [x] **Executive Analytics Dashboard:** Conversion funnel, KPI metrics, category breakdown, score distributions.
+- [x] **Decoupled REST API & Cloud Backend:** FastAPI deployed on Render with HTTP communication via `API_BASE_URL`.
 - [x] **Persistent SQLite Storage:** CRUD operations, multi-filter search, status updates, and CSV export.
 - [x] **AI Opportunity Report:** Comprehensive business analysis of 5 strategic AI/ML opportunities for Cynbit.
 - [x] **Technical Approach Report:** Exhaustive technical documentation covering data, ML, API, security, and scaling.
