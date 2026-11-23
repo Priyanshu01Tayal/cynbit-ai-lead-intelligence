@@ -1,0 +1,365 @@
+{
+  "timestamp": "2026-11-23T11:58:20.057309",
+  "algorithm": "TF-IDF + LogisticRegression",
+  "dataset_size": 240,
+  "train_samples": 192,
+  "test_samples": 48,
+  "vocabulary_size": 3956,
+  "overall": {
+    "accuracy": 0.8542,
+    "macro_precision": 0.8882,
+    "macro_recall": 0.8542,
+    "macro_f1": 0.8608,
+    "weighted_f1": 0.8608
+  },
+  "labels": [
+    "AI/ML Development",
+    "Business Automation",
+    "Cloud & DevOps",
+    "Mobile App Development",
+    "Other",
+    "Web Development"
+  ],
+  "confusion_matrix": [
+    [
+      6,
+      0,
+      0,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      7,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      7,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      1,
+      7,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      2,
+      0,
+      6
+    ]
+  ],
+  "per_class": {
+    "AI/ML Development": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1_score": 0.8571,
+      "support": 8
+    },
+    "Business Automation": {
+      "precision": 0.8889,
+      "recall": 1.0,
+      "f1_score": 0.9412,
+      "support": 8
+    },
+    "Cloud & DevOps": {
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1_score": 0.9333,
+      "support": 8
+    },
+    "Mobile App Development": {
+      "precision": 0.5833,
+      "recall": 0.875,
+      "f1_score": 0.7,
+      "support": 8
+    },
+    "Other": {
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1_score": 0.9333,
+      "support": 8
+    },
+    "Web Development": {
+      "precision": 0.8571,
+      "recall": 0.75,
+      "f1_score": 0.8,
+      "support": 8
+    }
+  },
+  "top_features": {
+    "AI/ML Development": [
+      {
+        "feature": "ai",
+        "weight": 1.1089
+      },
+      {
+        "feature": "model",
+        "weight": 0.9203
+      },
+      {
+        "feature": "detection",
+        "weight": 0.7506
+      },
+      {
+        "feature": "models",
+        "weight": 0.5756
+      },
+      {
+        "feature": "based",
+        "weight": 0.5752
+      },
+      {
+        "feature": "ml",
+        "weight": 0.571
+      },
+      {
+        "feature": "data",
+        "weight": 0.5397
+      },
+      {
+        "feature": "months",
+        "weight": 0.539
+      },
+      {
+        "feature": "learning",
+        "weight": 0.5213
+      },
+      {
+        "feature": "fine",
+        "weight": 0.5025
+      }
+    ],
+    "Business Automation": [
+      {
+        "feature": "automated",
+        "weight": 1.5023
+      },
+      {
+        "feature": "automate",
+        "weight": 1.2756
+      },
+      {
+        "feature": "looking automate",
+        "weight": 1.1383
+      },
+      {
+        "feature": "need automated",
+        "weight": 1.1133
+      },
+      {
+        "feature": "workflow",
+        "weight": 1.0166
+      },
+      {
+        "feature": "want automated",
+        "weight": 1.0147
+      },
+      {
+        "feature": "timeline weeks",
+        "weight": 0.9681
+      },
+      {
+        "feature": "weeks",
+        "weight": 0.7804
+      },
+      {
+        "feature": "sms",
+        "weight": 0.6024
+      },
+      {
+        "feature": "slack",
+        "weight": 0.5411
+      }
+    ],
+    "Cloud & DevOps": [
+      {
+        "feature": "aws",
+        "weight": 1.3488
+      },
+      {
+        "feature": "cloud",
+        "weight": 1.3076
+      },
+      {
+        "feature": "set",
+        "weight": 0.7924
+      },
+      {
+        "feature": "infrastructure",
+        "weight": 0.7497
+      },
+      {
+        "feature": "kubernetes",
+        "weight": 0.6391
+      },
+      {
+        "feature": "terraform",
+        "weight": 0.6055
+      },
+      {
+        "feature": "pipelines",
+        "weight": 0.583
+      },
+      {
+        "feature": "deploy",
+        "weight": 0.5461
+      },
+      {
+        "feature": "database",
+        "weight": 0.5363
+      },
+      {
+        "feature": "azure",
+        "weight": 0.5309
+      }
+    ],
+    "Mobile App Development": [
+      {
+        "feature": "mobile",
+        "weight": 2.6678
+      },
+      {
+        "feature": "app",
+        "weight": 2.479
+      },
+      {
+        "feature": "mobile app",
+        "weight": 1.717
+      },
+      {
+        "feature": "need mobile",
+        "weight": 1.179
+      },
+      {
+        "feature": "months",
+        "weight": 0.8341
+      },
+      {
+        "feature": "timeline months",
+        "weight": 0.79
+      },
+      {
+        "feature": "want mobile",
+        "weight": 0.6539
+      },
+      {
+        "feature": "audio",
+        "weight": 0.5801
+      },
+      {
+        "feature": "ios",
+        "weight": 0.5201
+      },
+      {
+        "feature": "build mobile",
+        "weight": 0.5076
+      }
+    ],
+    "Other": [
+      {
+        "feature": "software",
+        "weight": 1.473
+      },
+      {
+        "feature": "budget 000",
+        "weight": 1.1744
+      },
+      {
+        "feature": "cynbit",
+        "weight": 0.7319
+      },
+      {
+        "feature": "provide",
+        "weight": 0.7046
+      },
+      {
+        "feature": "team",
+        "weight": 0.659
+      },
+      {
+        "feature": "general",
+        "weight": 0.6563
+      },
+      {
+        "feature": "us",
+        "weight": 0.5628
+      },
+      {
+        "feature": "technical",
+        "weight": 0.5448
+      },
+      {
+        "feature": "services",
+        "weight": 0.5293
+      },
+      {
+        "feature": "office",
+        "weight": 0.4727
+      }
+    ],
+    "Web Development": [
+      {
+        "feature": "web",
+        "weight": 2.2211
+      },
+      {
+        "feature": "portal",
+        "weight": 0.8324
+      },
+      {
+        "feature": "website",
+        "weight": 0.7259
+      },
+      {
+        "feature": "web application",
+        "weight": 0.7135
+      },
+      {
+        "feature": "web based",
+        "weight": 0.6991
+      },
+      {
+        "feature": "need web",
+        "weight": 0.6917
+      },
+      {
+        "feature": "interactive",
+        "weight": 0.6907
+      },
+      {
+        "feature": "modern",
+        "weight": 0.6851
+      },
+      {
+        "feature": "application",
+        "weight": 0.6044
+      },
+      {
+        "feature": "platform",
+        "weight": 0.6028
+      }
+    ]
+  }
+}

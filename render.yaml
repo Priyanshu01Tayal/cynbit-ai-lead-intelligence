@@ -1,0 +1,40 @@
+services:
+  # 1. FastAPI REST API Backend Service
+  - type: web
+    name: cynbit-api-backend
+    env: python
+    region: oregon
+    plan: standard
+    buildCommand: "pip install -r requirements.txt && python -m app.ml.train"
+    startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    disk:
+      name: cynbit-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: APP_NAME
+        value: "Cynbit AI Lead Intelligence API"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        value: "sqlite:///./data/cynbit_leads.db"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+  # 2. Streamlit SaaS Frontend Service
+  - type: web
+    name: cynbit-streamlit-frontend
+    env: python
+    region: oregon
+    plan: standard
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "streamlit run frontend/streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
+    envVars:
+      - key: APP_NAME
+        value: "Cynbit AI Lead Intelligence Platform"
+      - key: ENVIRONMENT
+        value: "production"
